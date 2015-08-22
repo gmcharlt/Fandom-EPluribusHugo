@@ -5,7 +5,7 @@ use strict;
 use Carp;
 
 use version;
-our $VERSION = qv('0.0.1');
+our $VERSION = qv('0.0.2');
 
 sub new {
     my $class = shift;
@@ -53,6 +53,7 @@ sub calculate_finalists {
     while (1) {
         my ($eliminated, $points, $total_nominations) =
             $self->_run_elimination_round($surviving_nominees);
+
         if ((@$surviving_nominees - @$eliminated) >= $self->{max_finalists}) {
             my %to_remove = map { $_ => 1 } @$eliminated;
             @$surviving_nominees =
@@ -65,6 +66,11 @@ sub calculate_finalists {
                 eliminated => $eliminated,
             };
         } else {
+            # If elimination would reduce the number of finalists to
+            # fewer than the number specified in section 3.8.1, then
+            # instead no nominees will be eliminated during that
+            # round, and all remaining nominees shall appear on the
+            # final ballot, extending it if necessary.
             push @{ $self->{round_results} }, {
                 points => $points,
                 total_nominations => $total_nominations,
@@ -82,19 +88,35 @@ sub _run_elimination_round {
     my $self = shift;
     my $surviving_nominees = shift;
 
-    # Calculation phase
+    ##
+    ## Calculation phase
+    ##
+
+    # number of ballots on which each nominee appears
     my %total_nominations = map { $_ => 0 } @$surviving_nominees;
+    # points accumulated by each nominee
     my %points = map { $_ => 0 } @$surviving_nominees; 
+
     foreach my $ballot ($self->ballots()) {
         my @active_nominations = ();
         foreach my $nominee (@$ballot) {
             push @active_nominations, $nominee if exists($total_nominations{$nominee});
         }
         if (0 == @active_nominations) {
+            # ballot doesn't name any of the surviving nominees, so
+            # it can have no further influence on the results
             next;
         }
-        my $points_per_nomination = 1 / scalar(@active_nominations);
+
+        # First, the total number of nominations (the number of ballots
+        # on which each nominee appears) from all eligible ballots
+        # shall be tallied for each remaining nominee.
         $total_nominations{$_}++ foreach @active_nominations;
+
+        # [A] single "point" shall be assigned to each nomination ballot.
+        # That point shall be equally divided among all remaining nominees
+        # on that ballot.
+        my $points_per_nomination = 1 / scalar(@active_nominations);
         $points{$_} += $points_per_nomination foreach @active_nominations;
     }
 
@@ -102,16 +124,26 @@ sub _run_elimination_round {
     ## Selection phase
     ##
 
+    # sort by ascending point totals
     my @sorted_by_points = sort { $points{$a} <=> $points{$b} } keys %points;
 
-    # will have at least two entries for the elimination phase
+    # The two nominees with the lowest point totals shall be selected
+    # for comparison in the Elimination Phase.
     my @candidates = @sorted_by_points[0..1];
 
-    # and may have more if there's a tie for the lowest number of points
+    # Now check for ties...
+
     my $threshold;
     if      ($points{ $candidates[0] } == $points{ $candidates[1] }) {
+        # During the Selection Phase, if two or more nominees are tied
+        # for the lowest point total, all such nominees shall be
+        # selected for the Elimination Phase.
         $threshold = $points{ $candidates[0] };
     } elsif ($points{ $candidates[1] } == $points{ $sorted_by_points[2] }) {
+        # During the Selection Phase, if one nominee has the lowest
+        # point total and two or more nominees are tied for the
+        # second-lowest point total, then all such nominees shall be
+        # selected for the Elimination Phase.
         $threshold = $points{ $candidates[1] };
     }
 
@@ -125,7 +157,10 @@ sub _run_elimination_round {
         }
     }
 
-    # Elimination phase
+    ##
+    ## Elimination phase
+    ##
+
     my @eliminated = ();
     my @sorted_by_nominations =
         sort { $total_nominations{$a} <=> $total_nominations{$b} }
@@ -133,8 +168,23 @@ sub _run_elimination_round {
     foreach my $candidate (@sorted_by_nominations) {
         if (@eliminated) {
             if ($total_nominations{ $candidate } > $total_nominations{ $eliminated[0] }) {
+                # Nominees chosen in the Selection Phase shall be
+                # compared, and the nominee with the fewest number
+                # of nominations shall be eliminated and removed from
+                # all ballots for the Calculation Phase of all
+                # subsequent rounds. (See 3.A.3 for ties.)
+                last;
+            } elsif ($points{ $candidate } >  $points{ $eliminated[0] }) {
+                # During the Elimination Phase, if two or more nominees
+                # are tied for the fewest number of nominations, the
+                # nominee with the lowest point total at that round
+                # shall be eliminated.
                 last;
             } elsif ($points{ $candidate } == $points{ $eliminated[0] }) {
+                # During the Elimination Phase, if two or morenominees
+                # are tied for both fewest number of nominations and
+                # lowest point total, then all such nominees tied at
+                # that round shall be eliminated.
                 push @eliminated, $candidate;
             } 
         } else {

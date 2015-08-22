@@ -1,5 +1,9 @@
 Revision history for Fandom-EPluribusHugo
 
+0.0.2  Sat Aug 22 02:20:39 UTC 2015
+       * Add more comments, including relevent quotes
+         from the EPH proposal
+       * explicitly handle the 3.A.3(3) situation
 0.0.1  Fri Aug 21 21:58:12 2015
        Initial release.
 
