@@ -1,0 +1,9 @@
+bin/calculate_hugo_finalists
+Build.PL
+Changes
+lib/Fandom/EPluribusHugo.pm
+MANIFEST			This list of files
+README
+t/00.load.t
+t/perlcritic.t
+t/pod.t

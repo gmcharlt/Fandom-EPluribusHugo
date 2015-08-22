@@ -1,0 +1,70 @@
+#!/usr/bin/perl
+
+# Copyright (c) 2015, Galen Charlton C<< <gmcharlt@gmail.com> >>. All rights reserved.
+# 
+# This program is free software; you can redistribute it and/or
+# modify it under the same terms as Perl itself. See L<perlartistic>.
+
+use strict;
+use warnings;
+use Data::Dumper;
+
+use open ':encoding(UTF-8)';
+
+use Fandom::EPluribusHugo;
+
+my $tabulator = Fandom::EPluribusHugo->new();
+
+if (@ARGV != 2) {
+    print STDERR "Usage: $0 nominee-file ballot-file > results.txt";
+    exit 1;
+}
+
+open my $nomfh, '<', $ARGV[0] or die "Cannot open nominees file $ARGV[0]: $!\n";
+open my $balfh, '<', $ARGV[1] or die "Cannot open ballots file $ARGV[1]: $!\n";
+
+my @nominees = ();
+while (<$nomfh>) {
+    chomp;
+    s/\r$//;
+    s/\x{FEFF}//g;
+    push @nominees, $_;
+}
+close $nomfh;
+
+my @ballots = ();
+while (<$balfh>) {
+    chomp;
+    s/\r$//;
+    s/\x{FEFF}//g;
+    push @ballots, [ split /,/, $_ ];
+}
+close $balfh;
+
+$tabulator->nominees(@nominees);
+$tabulator->ballots(@ballots);
+my @finalists = $tabulator->calculate_finalists();
+my @round_details = $tabulator->round_details();
+
+my $round = 0;
+foreach my $results (@round_details) {
+    $round++;
+    print "Current Works for Round $round:\n";
+    foreach my $nominee (sort keys %{ $results->{total_nominations} }) {
+        print "$nominee Points: $results->{points}->{$nominee} Nominations: $results->{total_nominations}->{$nominee}\n";
+    }
+    print "\n";
+    if (exists $results->{eliminated}) {
+        print "Results of Round: $round\n";
+        print "Work(s) Eliminated: \n";
+        foreach my $nominee (sort @{ $results->{eliminated} }) {
+            print "$nominee Points: $results->{points}->{$nominee} Nominations: $results->{total_nominations}->{$nominee}\n";
+        }
+    } else {
+        print "Final Hugo Ballot:\n";
+        foreach my $nominee (sort @finalists) {
+            print "$nominee Points: $results->{points}->{$nominee} Nominations: $results->{total_nominations}->{$nominee}\n";
+        }
+    }
+    print "\n";
+}

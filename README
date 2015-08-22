@@ -1,0 +1,32 @@
+Fandom-EPluribusHugo version 0.0.1
+
+The Fandom::EPluribusHugo module implements the SDV-LPE
+(single divisible vote with least popular eliminated) algorithm
+for calculating Hugo finalists from a set of nominating ballots
+as described at L<http://sasquan.org/business-meeting/agenda/#epluribus>.
+
+It comes with an example script, calculate_hugo_finalists, that
+can be used to calculate a set of finalists given a file of
+nominees and a file of ballots.
+
+INSTALLATION
+
+To install this module, run the following commands:
+
+	perl Build.PL
+	./Build
+	./Build test
+	./Build install
+
+
+DEPENDENCIES
+
+None.
+
+
+COPYRIGHT AND LICENCE
+
+Copyright (C) 2015, Galen Charlton
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
